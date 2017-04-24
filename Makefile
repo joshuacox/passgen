@@ -23,3 +23,12 @@ qtest:
 	$(eval TMP := $(shell mktemp -d --suffix=testpassgen))
 	-@./passgen > ${TMP}/testgen
 	-@ent -t ${TMP}/testgen
+
+build:
+	docker build -t joshuacox/passgen .
+
+dtest: build
+	docker run -it joshuacox/passgen make test
+
+d: build
+	docker run -it joshuacox/passgen
