@@ -1,0 +1,122 @@
+#!/bin/bash
+# some collected methods gathered over the from pages like this:
+
+# http://www.howtogeek.com/howto/30184/10-ways-to-generate-a-random-password-from-the-command-line/
+
+# turn into a function like this, and place in .bashrc
+# randpw(){ < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-16};echo;}
+
+# Some dates to use later
+DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+DATE3=$(date +"%N-%S")
+DATE4=$(date +"%S-%N")
+SEED1=$(echo $DATE1:$DATE2 | sha256sum | base64 | head -c 256)
+SEED2=$(echo $SEED1:$DATE3 | md5sum)
+# Define what it means to be a long pass
+LONG=63
+
+# regex to test if integer
+re='^[0-9]+$'
+if [[ $1 =~ $re ]] ; then
+  PASS_LENGTH=$1
+else
+  PASS_LENGTH=44
+fi
+
+# Main
+main() {
+  local FIRST_ARG=$1
+
+	if [[ "$FIRST_ARG" == '-h' || "$FIRST_ARG" == '--help'  ]]; then
+		usage
+		exit 1
+	elif [[ "$FIRST_ARG" == '-l' || "$FIRST_ARG" == '--long'  ]]; then
+    longshots
+		exit 1
+	elif [[ "$FIRST_ARG" == '-t' || "$FIRST_ARG" == '--test'  ]]; then
+    tests
+		exit 1
+	fi
+  obedient
+  # If we didn't pass a number in then we can use the ones
+  # that disobey PASS_LENGTH
+  if ! [[ $1 =~ $re ]] ; then
+    disobedient
+  fi
+  if [[ "$PASS_LENGTH" -gt "$LONG" ]] ; then
+    longshots
+  fi
+
+}
+
+# Help
+usage() {
+	echo -e "Passgen - The CLI Password Generator"
+	echo "Usage:"
+	echo -e "passgen\t\t- by default will generate many passwords with lots of chars"
+	echo -e "passgen 12\t- generate 12 character passwords"
+}
+
+# Main block of random generators these all obey PASS_LENGTH
+obedient() {
+  echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  echo $DATE1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  echo $DATE2 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  echo $DATE3 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
+  < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH};echo;
+  < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}};echo;
+  < /dev/urandom tr -dc '12345!@#$%qwertQWERTasdfgASDFGzxcvbZXCVB' | head -c${PASS_LENGTH}; echo ""
+  strings /dev/urandom | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n'; echo
+  tr -cd '[:alnum:]' < /dev/urandom | fold -w${PASS_LENGTH} | head -n1
+  #debug stuff
+  #count=1
+  #echo "$count";count=$(echo "$count + 1"|bc)
+}
+
+# These disobey the PASS_LENGTH
+disobedient() {
+  openssl rand -base64 ${PASS_LENGTH}
+  dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev
+  # These badly to disobey the PASS_LENGTH
+  echo $SEED1 | md5sum
+  echo $SEED2 | md5sum
+  echo $DATE1 | md5sum
+  echo $DATE2 | md5sum
+  echo $DATE3 | md5sum
+  echo $DATE4 | md5sum
+  echo $SEED1 | sha1sum
+  echo $SEED2 | sha1sum
+  echo $DATE1 | sha1sum
+  echo $DATE2 | sha1sum
+  echo $DATE3 | sha1sum
+  echo $DATE4 | sha1sum
+  echo $SEED1 | sha256sum
+  echo $SEED2 | sha256sum
+  echo $DATE1 | sha256sum
+  echo $DATE2 | sha256sum
+  echo $DATE3 | sha256sum
+  echo $DATE4 | sha256sum
+}
+longshots() {
+  echo $SEED1 | sha384sum
+  echo $SEED2 | sha384sum
+  echo $DATE1 | sha384sum
+  echo $DATE2 | sha384sum
+  echo $DATE3 | sha384sum
+  echo $DATE4 | sha384sum
+  echo $SEED1 | sha512sum
+  echo $SEED2 | sha512sum
+  echo $DATE1 | sha512sum
+  echo $DATE2 | sha512sum
+  echo $DATE3 | sha512sum
+}
+tests() {
+  # echo $DATE4 | sha512sum | rngtest -p
+  # dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
+  dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
+}
+
+main "$@"

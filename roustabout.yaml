@@ -1,0 +1,4 @@
+- name: dockersupport
+  hosts: passgen
+  tasks:
+  - script: bootstrappassgen.sh
