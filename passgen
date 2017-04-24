@@ -116,7 +116,8 @@ longshots() {
 tests() {
   # echo $DATE4 | sha512sum | rngtest -p
   # dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
-  dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
+  #dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
+  dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | ent
 }
 
 main "$@"
