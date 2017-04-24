@@ -1,7 +1,16 @@
-# website 
+Generate Passwords Easily 
+
+## website 
+
 http://joshuacox.github.io/passgen
 
-# Install
+### Usage
+
+`passgen`  will get you a bunch of random output
+
+`passgen 8`  will get you a bunch of random output of length 8
+
+### Install
 
 ##### oneliner (it’s how I install myself so I’m leaving this up top)
 

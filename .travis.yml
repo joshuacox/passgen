@@ -4,7 +4,5 @@ services:
   - docker
 
 language: bash
-before_script:
-- apt-get install -yqq ent
 script:
 - make dtest
