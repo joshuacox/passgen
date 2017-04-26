@@ -6,7 +6,15 @@ http://joshuacox.github.io/passgen
 
 ### Usage
 
-`passgen`  will get you a bunch of random output
+
+`passgen` use a pretty good random and copy to your clipboard, primary and
+secondary.
+
+i.e. ctrl-shift-v, shift-insert, and middle click all ought to
+work in linux and print you out a decent password.  Or if you like you
+can copy any section of the resulting out of `passgen -v`
+
+`passgen -v`  will get you a bunch of random output on the terminal
 
 `passgen 8`  will get you a bunch of random output of length 8
 

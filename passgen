@@ -34,16 +34,24 @@ main() {
 	elif [[ "$FIRST_ARG" == '-l' || "$FIRST_ARG" == '--long'  ]]; then
     longshots
 		exit 1
+	elif [[ "$FIRST_ARG" == '-a' || "$FIRST_ARG" == '--all'  ]]; then
+    obedient
+    disobedient
+    longshots
+		exit 1
+	elif [[ "$FIRST_ARG" == '-o' || "$FIRST_ARG" == '--obedient'  ]]; then
+    obedient
+		exit 1
 	elif [[ "$FIRST_ARG" == '-t' || "$FIRST_ARG" == '--test'  ]]; then
     tests
 		exit 1
 	fi
-  obedient
+  clippy
   # If we didn't pass a number in then we can use the ones
   # that disobey PASS_LENGTH
-  if ! [[ $1 =~ $re ]] ; then
-    disobedient
-  fi
+  #if ! [[ $1 =~ $re ]] ; then
+  #  disobedient
+  #fi
   if [[ "$PASS_LENGTH" -gt "$LONG" ]] ; then
     longshots
   fi
@@ -54,7 +62,13 @@ main() {
 usage() {
 	echo -e "Passgen - The CLI Password Generator"
 	echo "Usage:"
-	echo -e "passgen\t\t- by default will generate many passwords with lots of chars"
+	echo -e "passgen\t\t-      by default will generate a password with lots of chars
+ use a pretty good random and copy to your clipboard, primary and
+secondary.i.e. ctrl-shift-v, shift-insert, and middle click all ought to
+work in linux and print you out a decent password."
+	echo -e "passgen -o\t- generate obedient passwords"
+	echo -e "passgen -a\t- generate all passwords"
+	echo -e "passgen -l\t- generate long hash passwords"
 	echo -e "passgen 12\t- generate 12 character passwords"
 }
 
@@ -74,6 +88,14 @@ obedient() {
   #debug stuff
   #count=1
   #echo "$count";count=$(echo "$count + 1"|bc)
+}
+
+clippy () {
+  RANDO1=$(echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH})
+   echo $RANDO1 | xclip -i  -selection clipboard
+   echo $RANDO1 | xclip -i  -selection primary
+   echo $RANDO1 | xclip -i  -selection secondary
+   echo $RANDO1
 }
 
 # These disobey the PASS_LENGTH
