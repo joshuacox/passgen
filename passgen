@@ -11,7 +11,8 @@ DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
 DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
 DATE3=$(date +"%N-%S")
 DATE4=$(date +"%S-%N")
-SEED1=$(echo $DATE1:$DATE2 | sha256sum | base64 | head -c 256)
+RANDODD=$(dd if=/dev/urandom bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
+SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
 SEED2=$(echo $SEED1:$DATE3 | md5sum)
 # Define what it means to be a long pass
 LONG=63
@@ -23,6 +24,8 @@ if [[ $1 =~ $re ]] ; then
 else
   PASS_LENGTH=44
 fi
+
+RANDO1=$(echo $SEED2 | sha512sum | base64 | head -c ${PASS_LENGTH})
 
 # Main
 main() {
@@ -92,9 +95,9 @@ obedient() {
 
 clippy () {
   RANDO1=$(echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH})
-   echo $RANDO1 | xclip -i  -selection clipboard
-   echo $RANDO1 | xclip -i  -selection primary
-   echo $RANDO1 | xclip -i  -selection secondary
+   echo -n $RANDO1 | xclip -i  -selection clipboard
+   echo -n $RANDO1 | xclip -i  -selection primary
+   echo -n $RANDO1 | xclip -i  -selection secondary
    echo $RANDO1
 }
 
@@ -139,7 +142,8 @@ tests() {
   # echo $DATE4 | sha512sum | rngtest -p
   # dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
   #dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
-  dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | ent
+  #dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | ent
+  echo $RANDO1 | ent
 }
 
 main "$@"
