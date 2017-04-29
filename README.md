@@ -1,6 +1,6 @@
-Generate Passwords Easily 
+Generate Passwords Easily
 
-## website 
+## website
 
 http://joshuacox.github.io/passgen
 
