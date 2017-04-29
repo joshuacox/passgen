@@ -7,16 +7,20 @@ http://joshuacox.github.io/passgen
 ### Usage
 
 
-`passgen` use a pretty good random and copy to your clipboard, primary and
+`passgen` use a pretty good random generator to make a randomized password and copy to it your clipboard, primary and
 secondary.
 
 i.e. ctrl-shift-v, shift-insert, and middle click all ought to
-work in linux and print you out a decent password.  Or if you like you
+work in linux and paste you out a decent password.  Or if you like you
 can copy any section of the resulting out of `passgen -v`
 
 `passgen -v`  will get you a bunch of random output on the terminal
 
-`passgen 8`  will get you a bunch of random output of length 8
+`passgen 8`  will get you a random password of length 8 and copy to the
+clipboards
+
+`passgen 32`  will get you a random password of length 32 and copy to the
+clipboards
 
 ### Install
 

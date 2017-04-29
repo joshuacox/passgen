@@ -10,7 +10,7 @@ install:
 	install -m 0555 passgen /usr/local/bin/passgen
 
 play:
-	ansible-playbook roustabout.yaml
+	ansible-playbook passgen.yaml
 
 test:
 	$(eval TMP := $(shell mktemp -d --suffix=testpassgen))
