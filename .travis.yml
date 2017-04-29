@@ -1,8 +1,9 @@
 sudo: required
-
 services:
-  - docker
-
+- docker
 language: bash
 script:
 - make dtest
+notifications:
+  slack:
+    secure: D4n36UmOhoWpQQe+NhoBhnWwT4OQ0HArEG7kxHksksO/YVQwidnQxmTC61xdrCDhlzDzj2cIkNj9QT9GBhAj4XPlwf7ggWT+cHtFGYU+KPk/7uO3KqvFz5rxJ22eNy5TlHfFNhXfaMmMf2YZrwBzdXBwr14z3M/QWDG/hY4ivOHsEUD+k+Bpwr+XZkpSDM/i2s88Mo68CXChogPPBSZnymPQFn7n51rgeVtRZlUhwiY8UcDRbMQeYf96PkR34wGartVbqP2+JFL8/+pEbC0+03UphDGFoN89T1g+hg/iDhS9StIoFk1M8/Frx1HeCsUYVPpjHTrM7xYq1eRKd1pmSMnUT/RFRQuBCNaRuHEnqyupF2lgSpqInlAyFmgdL+ksrGYhoReDJfo9u4iMULQLwXjC5ASONGOwic42xl5gw6THx8j0PHl3r5yJOGwP2bM0l9a6qsRw3eWeiu23BHyDJGhEK9kpcKxYtGldLKgulVm+msuB4u/1ZmI+3J8r8Ftc8cczsm+km5GF+2amP3CqWicSnMWFtgDr0phQLogI3ZkPDWlNsoaqj+Y5F/uYe/j1EMeSJ/uyBuqcGypWOak8/s8cxCdM47TODXQRAGtkchpARN/xuzQn3Yd8pHDKe/y6WPVIpF/noNACDxRicvm7kmwtq9Rk2uCQcSkfnWMYdy4=
