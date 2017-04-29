@@ -14,21 +14,21 @@ play:
 
 test:
 	$(eval TMP := $(shell mktemp -d --suffix=testpassgen))
-	-@./passgen > ${TMP}/testgen
+	-@./passgen -v > ${TMP}/testgen
 	-@ent -t ${TMP}/testgen |tail -n1 > ${TMP}/testgen.csv
 	-@./tester.sh ${TMP}/testgen.csv 4
 	-@rm -Rf ${TMP}/testgen
 
 qtest:
 	$(eval TMP := $(shell mktemp -d --suffix=testpassgen))
-	-@./passgen > ${TMP}/testgen
+	-@./passgen -v > ${TMP}/testgen
 	-@ent -t ${TMP}/testgen
 
 build:
 	docker build -t joshuacox/passgen .
 
 dtest: build
-	docker run -it joshuacox/passgen make test
+	docker run -it joshuacox/passgen ./runtest
 
 d: build
 	docker run -it joshuacox/passgen

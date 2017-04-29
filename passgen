@@ -37,7 +37,7 @@ main() {
 	elif [[ "$FIRST_ARG" == '-l' || "$FIRST_ARG" == '--long'  ]]; then
     longshots
 		exit 1
-	elif [[ "$FIRST_ARG" == '-a' || "$FIRST_ARG" == '--all'  ]]; then
+	elif [[ "$FIRST_ARG" == '-a' || "$FIRST_ARG" == '--all' || "$FIRST_ARG" == '-v'  ]]; then
     obedient
     disobedient
     longshots

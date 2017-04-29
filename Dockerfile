@@ -9,7 +9,8 @@ apt-get clean && \
 rm -Rf /var/lib/apt/lists/*
 
 COPY . /assets
-
 WORKDIR /assets
-USER root
-CMD ["./passgen"]
+
+#ENTRYPOINT ["./passgen"]
+#CMD ["-v"]
+CMD ["./passgen", "-v"]
