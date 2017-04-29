@@ -5,11 +5,11 @@ IFS=','
 while read zoro Filebytes Entropy ChiSquare Mean MonteCarloPi SerialCorrelation; do
  # echo "$zoro $Filebytes $Entropy $ChiSquare $Mean $MonteCarloPi $SerialCorrelation"
  if ! [[ $(echo "$Entropy > $THRESH" | bc) -gt "0" ]] ; then
+   echo -n "Entropy too low at"
    echo $Entropy
-   echo Entropy too low
    exit 1
  else
-    echo Entropy is high enough
+    echo Entropy is high enough at $Entropy
     exit 0
  fi
 done < $TEST_FILE
