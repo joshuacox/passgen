@@ -1,0 +1,10 @@
+#!/bin/bash
+THRESH=4
+TMP=$(mktemp --tmpdir=/assets -d --suffix=testpassgen)
+
+./passgen -v > $TMP/testgen
+#cat $TMP/testgen
+ent -t $TMP/testgen |tail -n1 > $TMP/testgen.csv
+#cat $TMP/testgen.csv
+./tester.sh $TMP/testgen.csv $THRESH
+rm -Rf $TMP
