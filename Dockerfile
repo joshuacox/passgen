@@ -1,3 +1,4 @@
+LABEL maintainer="josh at the http://webhosting.coop/"
 FROM debian:jessie
 
 RUN DEBIAN_FRONTEND=noninteractive \
