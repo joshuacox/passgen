@@ -1,5 +1,5 @@
-LABEL maintainer="josh at the http://webhosting.coop/"
 FROM debian:jessie
+MAINTAINER "josh at the http://webhosting.coop/"
 
 RUN DEBIAN_FRONTEND=noninteractive \
 apt-get -qq update && apt-get -qqy dist-upgrade && \
