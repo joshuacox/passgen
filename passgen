@@ -1,31 +1,22 @@
 #!/bin/bash
-# some collected methods gathered over the from pages like this:
+# Generate a password and immediately copy it to all clipboards by default
 
-# http://www.howtogeek.com/howto/30184/10-ways-to-generate-a-random-password-from-the-command-line/
+# Determine which method of creating a random password we'll use
+SHUFFY=$(shuf -i 1-21 -n1 --random-source=/dev/random)
 
-# turn into a function like this, and place in .bashrc
-# randpw(){ < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-16};echo;}
-
-# Some dates to use later
-DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-DATE3=$(date +"%N-%S")
-DATE4=$(date +"%S-%N")
-RANDODD=$(dd if=/dev/urandom bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
-SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-SEED2=$(echo $SEED1:$DATE3 | md5sum)
 # Define what it means to be a long pass
 LONG=63
+
+# Our result store
+RESULT=initialized
 
 # regex to test if integer
 re='^[0-9]+$'
 if [[ $1 =~ $re ]] ; then
   PASS_LENGTH=$1
 else
-  PASS_LENGTH=44
+  PASS_LENGTH=11
 fi
-
-RANDO1=$(echo $SEED2 | sha512sum | base64 | head -c ${PASS_LENGTH})
 
 # Main
 main() {
@@ -48,16 +39,12 @@ main() {
 	elif [[ "$FIRST_ARG" == '-t' || "$FIRST_ARG" == '--test'  ]]; then
     tests
 		exit 1
+	elif [[ "$FIRST_ARG" == '-vt' || "$FIRST_ARG" == '--verbose-test'  ]]; then
+    verbosetests
+		exit 1
 	fi
+
   clippy
-  # If we didn't pass a number in then we can use the ones
-  # that disobey PASS_LENGTH
-  #if ! [[ $1 =~ $re ]] ; then
-  #  disobedient
-  #fi
-  if [[ "$PASS_LENGTH" -gt "$LONG" ]] ; then
-    longshots
-  fi
 
 }
 
@@ -77,6 +64,12 @@ work in linux and print you out a decent password."
 
 # Main block of random generators these all obey PASS_LENGTH
 obedient() {
+  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  DATE3=$(date +"%N-%S")
+  DATE4=$(date +"%S-%N")
+  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  SEED2=$(echo $SEED1:$DATE3 | md5sum)
   echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
   echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
   echo $DATE1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
@@ -94,15 +87,228 @@ obedient() {
 }
 
 clippy () {
-  RANDO1=$(echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH})
-   echo -n $RANDO1 | xclip -i  -selection clipboard
-   echo -n $RANDO1 | xclip -i  -selection primary
-   echo -n $RANDO1 | xclip -i  -selection secondary
-   echo $RANDO1
+  shuffy
+  echo -n $RESULT | xclip -i  -selection clipboard
+  echo -n $RESULT | xclip -i  -selection primary
+  echo -n $RESULT | xclip -i  -selection secondary
+  echo $RESULT
+}
+
+shuffy () {
+  case "$SHUFFY" in
+  "1")
+      RESULT=$(first_rand)
+      ;;
+  "2")
+      RESULT=$(second_rand)
+      ;;
+  "3")
+      RESULT=$(third_rand)
+      ;;
+  "4")
+      RESULT=$(fourth_rand)
+      ;;
+  "5")
+      RESULT=$(fifth_rand)
+      ;;
+  "6")
+      RESULT=$(sixth_rand)
+      ;;
+  "7")
+      RESULT=$(seventh_rand)
+      ;;
+  "8")
+      RESULT=$(eighth_rand)
+      ;;
+  "9")
+      RESULT=$(nineth_rand)
+      ;;
+  "10")
+      RESULT=$(tenth_rand)
+      ;;
+  "11")
+      RESULT=$(eleventh_rand)
+      ;;
+  "12")
+      RESULT=$(twelfth_rand)
+      ;;
+  "13")
+      RESULT=$(thirteenth_rand)
+      ;;
+  "14")
+      RESULT=$(fourteenth_rand)
+      ;;
+  "15")
+      RESULT=$(fifteenth_rand)
+      ;;
+  "16")
+      RESULT=$(sixteenth_rand)
+      ;;
+  "17")
+      RESULT=$(seventeenth_rand)
+      ;;
+  "18")
+      RESULT=$(eighteenth_rand)
+      ;;
+  "19")
+      RESULT=$(nineteenth_rand)
+      ;;
+  *)
+      RESULT=$(twentieth_rand)
+      ;;
+  esac
+}
+
+first_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
+  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+second_rand()
+{
+  local DATE3=$(date +"%N-%S")
+  local SEED2=$(echo $SEED1:$DATE3 | md5sum)
+  local myresult=$(echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+third_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  local myresult=$(echo $DATE1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+fourth_rand()
+{
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local myresult=$(echo $DATE2 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+fifth_rand()
+{
+  local DATE3=$(date +"%N-%S")
+  local myresult=$(echo $DATE3 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+sixth_rand()
+{
+  local DATE4=$(date +"%S-%N")
+  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+seventh_rand()
+{
+  local myresult=$(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH})
+  echo $myresult
+}
+
+eighth_rand()
+{
+  local myresult=$(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}};)
+  echo $myresult
+}
+
+nineth_rand()
+{
+  local myresult=$(< /dev/random tr -dc '12345!@#$%qwertQWERTasdfgASDFGzxcvbZXCVB' | head -c${PASS_LENGTH})
+  echo $myresult
+}
+
+tenth_rand()
+{
+  local myresult=$(strings /dev/random | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n')
+  echo $myresult
+}
+
+eleventh_rand()
+{
+  local myresult=$(tr -cd '[:alnum:]' < /dev/random | fold -w${PASS_LENGTH} | head -n1)
+  echo $myresult
+}
+
+twelfth_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  local myresult=$(echo $DATE1 | sha384sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+thirteenth_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  local myresult=$(echo $DATE1 | sha512sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+fourteenth_rand()
+{
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local myresult=$(echo $DATE2 | sha384sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+fifteenth_rand()
+{
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local myresult=$(echo $DATE2 | sha512sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+sixteenth_rand()
+{
+  local DATE3=$(date +"%N-%S")
+  local myresult=$(echo $DATE3 | sha384sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+seventeenth_rand()
+{
+  local DATE3=$(date +"%N-%S")
+  local myresult=$(echo $DATE3 | sha512sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+eighteenth_rand()
+{
+  local DATE4=$(date +"%S-%N")
+  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+nineteenth_rand()
+{
+  local DATE4=$(date +"%S-%N")
+  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+twentieth_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | rev)
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
+  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
 }
 
 # These disobey the PASS_LENGTH
 disobedient() {
+  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  DATE3=$(date +"%N-%S")
+  DATE4=$(date +"%S-%N")
+  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  SEED2=$(echo $SEED1:$DATE3 | md5sum)
   openssl rand -base64 ${PASS_LENGTH}
   dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev
   # These badly to disobey the PASS_LENGTH
@@ -126,6 +332,12 @@ disobedient() {
   echo $DATE4 | sha256sum
 }
 longshots() {
+  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  DATE3=$(date +"%N-%S")
+  DATE4=$(date +"%S-%N")
+  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  SEED2=$(echo $SEED1:$DATE3 | md5sum)
   echo $SEED1 | sha384sum
   echo $SEED2 | sha384sum
   echo $DATE1 | sha384sum
@@ -139,11 +351,21 @@ longshots() {
   echo $DATE3 | sha512sum
 }
 tests() {
-  # echo $DATE4 | sha512sum | rngtest -p
-  # dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
-  #dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | rngtest -p
-  #dd if=/dev/random bs=1 count=44000 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev | ent
-  echo $RANDO1 | ent
+  shuffy
+  echo $RESULT | ent
+}
+verbosetests() {
+  PASS_LENGTH=33
+  counter=20
+  while [ $counter -gt 0 ]
+  do
+    SHUFFY=$counter
+    shuffy
+    echo testing $SHUFFY _rand function
+    echo RESULT = $RESULT
+    echo $RESULT | ent
+    counter=$(( $counter - 1 ))
+  done
 }
 
 main "$@"
