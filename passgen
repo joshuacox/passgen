@@ -1,8 +1,6 @@
 #!/bin/bash
 # Generate a password and immediately copy it to all clipboards by default
 
-# Determine which method of creating a random password we'll use
-SHUFFY=$(shuf -i 1-21 -n1 --random-source=/dev/random)
 
 # Define what it means to be a long pass
 LONG=63
@@ -38,9 +36,6 @@ main() {
 		exit 1
 	elif [[ "$FIRST_ARG" == '-t' || "$FIRST_ARG" == '--test'  ]]; then
     tests
-		exit 1
-	elif [[ "$FIRST_ARG" == '-vt' || "$FIRST_ARG" == '--verbose-test'  ]]; then
-    verbosetests
 		exit 1
 	fi
 
@@ -95,6 +90,8 @@ clippy () {
 }
 
 shuffy () {
+  # Determine which method of creating a random password we'll use
+  SHUFFY=$(shuf -i 1-21 -n1 --random-source=/dev/random)
   case "$SHUFFY" in
   "1")
       RESULT=$(first_rand)
@@ -353,19 +350,6 @@ longshots() {
 tests() {
   shuffy
   echo $RESULT | ent
-}
-verbosetests() {
-  PASS_LENGTH=33
-  counter=20
-  while [ $counter -gt 0 ]
-  do
-    SHUFFY=$counter
-    shuffy
-    echo testing $SHUFFY _rand function
-    echo RESULT = $RESULT
-    echo $RESULT | ent
-    counter=$(( $counter - 1 ))
-  done
 }
 
 main "$@"
