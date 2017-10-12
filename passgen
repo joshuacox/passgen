@@ -39,6 +39,17 @@ main() {
 		exit 1
 	fi
 
+	if [[ "$FIRST_ARG" == '-u' || "$FIRST_ARG" == '--unsafe'  ]]; then
+    if [[ $2 =~ $re ]] ; then
+      PASS_LENGTH=$2
+    else
+      PASS_LENGTH=11
+    fi
+    unsafe
+  else
+    shuffy
+	fi
+
   clippy
 
 }
@@ -82,7 +93,6 @@ obedient() {
 }
 
 clippy () {
-  shuffy
   echo -n $RESULT | xclip -i  -selection clipboard
   echo -n $RESULT | xclip -i  -selection primary
   echo -n $RESULT | xclip -i  -selection secondary
@@ -293,6 +303,20 @@ twentieth_rand()
   local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | rev)
   local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
   local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
+  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
+  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  echo $myresult
+}
+
+unsafe () {
+  RESULT=$(unsafe_rand)
+}
+
+unsafe_rand()
+{
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local RANDODD=$(dd if=/dev/urandom bs=1 count=3333 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
   local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
   local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
