@@ -16,9 +16,25 @@ else
   PASS_LENGTH=11
 fi
 
+# Check if a command exists
+check_cmd () {
+  if ! type "$1" > /dev/null; then
+    echo "$1 was not found in your path!"
+    echo "To proceed please install $1 to your path and try again!"
+    exit 1
+  fi
+}
+
 # Main
 main() {
   local FIRST_ARG=$1
+  check_cmd uuidgen
+  check_cmd date
+  check_cmd sha256sum
+  check_cmd sha384sum
+  check_cmd sha512sum
+  check_cmd md5sum
+  check_cmd shuf
 
 	if [[ "$FIRST_ARG" == '-h' || "$FIRST_ARG" == '--help'  ]]; then
 		usage
@@ -168,47 +184,52 @@ shuffy () {
 
 first_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | md5sum)
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
   local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
   local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local myresult=$(echo $SEED1 | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 second_rand()
 {
-  local DATE3=$(date +"%N-%S")
-  local SEED2=$(echo $SEED1:$DATE3 | md5sum)
-  local myresult=$(echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local DATE3=$(date +"%N-%S" | sha256sum)
+  local SEED1=$(uuidgen -r)
+  local SEED2=$(echo $SEED1:$DATE3 | sha512sum)
+  local myresult=$(echo $SEED2 | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 third_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  local myresult=$(echo $DATE1 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha512sum)
+  local SEED1=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 fourth_rand()
 {
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  local myresult=$(echo $DATE2 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha512sum)
+  local SEED1=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 fifth_rand()
 {
-  local DATE3=$(date +"%N-%S")
-  local myresult=$(echo $DATE3 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%N-%S" | sha512sum)
+  local SEED1=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 sixth_rand()
 {
   local DATE4=$(date +"%S-%N")
-  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
+  local SEED1=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
@@ -244,29 +265,37 @@ eleventh_rand()
 
 twelfth_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  local myresult=$(echo $DATE1 | sha384sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha256sum)
+  local SEED1=$(uuidgen -t)
+  local SEED2=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha256sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 thirteenth_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  local myresult=$(echo $DATE1 | sha512sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha256sum)
+  local SEED1=$(uuidgen -r)
+  local SEED2=$(uuidgen -t)
+  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 fourteenth_rand()
 {
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  local myresult=$(echo $DATE2 | sha384sum | base64 | head -c ${PASS_LENGTH})
+  local DATE1=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
+  local SEED1=$(uuidgen -t)
+  local SEED2=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
 fifteenth_rand()
 {
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  local myresult=$(echo $DATE2 | sha512sum | base64 | head -c ${PASS_LENGTH})
+  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
+  local SEED1=$(uuidgen -t)
+  local SEED2=$(uuidgen -r)
+  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
   echo $myresult
 }
 
