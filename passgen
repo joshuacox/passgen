@@ -25,6 +25,17 @@ check_cmd () {
   fi
 }
 
+horizontal_rule () {
+  #rulez=( '!' '@' '\#' '-' '>' '<' '.' '_' '^' '*' '%' )
+  rulez=( '-' )
+  selected_rule=${rulez[$RANDOM % ${#rulez[@]} ]}
+  if [[ -z $selected_rule ]]; then
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' "_"
+  else
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' "$selected_rule"
+  fi
+}
+
 # Main
 main() {
   local FIRST_ARG=$1
@@ -35,6 +46,9 @@ main() {
   check_cmd sha512sum
   check_cmd md5sum
   check_cmd shuf
+  check_cmd gpg
+  check_cmd pwgen
+  check_cmd openssl
 
 	if [[ "$FIRST_ARG" == '-h' || "$FIRST_ARG" == '--help'  ]]; then
 		usage
@@ -86,26 +100,7 @@ work in linux and print you out a decent password."
 
 # Main block of random generators these all obey PASS_LENGTH
 obedient() {
-  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  DATE3=$(date +"%N-%S")
-  DATE4=$(date +"%S-%N")
-  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  SEED2=$(echo $SEED1:$DATE3 | md5sum)
-  echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  echo $SEED2 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  echo $DATE1 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  echo $DATE2 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  echo $DATE3 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH} ; echo
-  < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH};echo;
-  < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}};echo;
-  < /dev/urandom tr -dc '12345!@#$%qwertQWERTasdfgASDFGzxcvbZXCVB' | head -c${PASS_LENGTH}; echo ""
-  strings /dev/urandom | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n'; echo
-  tr -cd '[:alnum:]' < /dev/urandom | fold -w${PASS_LENGTH} | head -n1
-  #debug stuff
-  #count=1
-  #echo "$count";count=$(echo "$count + 1"|bc)
+  apg -a 1 -n20 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
 }
 
 clippy () {
@@ -184,225 +179,188 @@ shuffy () {
 
 first_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | md5sum)
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
-  local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
-  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  local myresult=$(echo $SEED1 | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  cat /dev/urandom | tr -dc a-zA-Z0-9 | head -c${PASS_LENGTH}; echo
 }
 
 second_rand()
 {
-  local DATE3=$(date +"%N-%S" | sha256sum)
-  local SEED1=$(uuidgen -r)
-  local SEED2=$(echo $SEED1:$DATE3 | sha512sum)
-  local myresult=$(echo $SEED2 | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  apg -a 0 -n1 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
 }
 
 third_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha512sum)
-  local SEED1=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  apg -a 1 -n1 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
+
 }
 
 fourth_rand()
 {
-  local DATE1=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha512sum)
-  local SEED1=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  local HEADSTOP=$(( 400 + $RANDOM % 50 + 1 ))
+  local GENBLOCK=$(( 500 + $RANDOM % 50 + 1 ))
+  echo $(gpg --gen-random 1 ${GENBLOCK}|base64|head -c${HEADSTOP}|tail -c${PASS_LENGTH})
 }
 
 fifth_rand()
 {
-  local DATE1=$(date +"%N-%S" | sha512sum)
-  local SEED1=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure ${PASS_LENGTH} 1
 }
 
 sixth_rand()
 {
-  local DATE4=$(date +"%S-%N")
-  local SEED1=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure ${PASS_LENGTH} 1
 }
 
 seventh_rand()
 {
-  local myresult=$(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH})
-  echo $myresult
+  echo $(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH})
 }
 
 eighth_rand()
 {
-  local myresult=$(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}};)
-  echo $myresult
+  echo $(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}})
 }
 
 nineth_rand()
 {
-  local myresult=$(< /dev/random tr -dc '12345!@#$%qwertQWERTasdfgASDFGzxcvbZXCVB' | head -c${PASS_LENGTH})
-  echo $myresult
+  echo $(< /dev/random tr -dc '12345!@#$%qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM' | head -c${PASS_LENGTH})
 }
 
 tenth_rand()
 {
-  local myresult=$(strings /dev/random | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n')
-  echo $myresult
+  echo $(strings /dev/random | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n')
 }
 
 eleventh_rand()
 {
-  local myresult=$(tr -cd '[:alnum:]' < /dev/random | fold -w${PASS_LENGTH} | head -n1)
-  echo $myresult
+  echo $(tr -cd '[:alnum:]' < /dev/urandom | fold -w${PASS_LENGTH} | head -n1)
 }
 
 twelfth_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha256sum)
-  local SEED1=$(uuidgen -t)
-  local SEED2=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha256sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  cat /dev/urandom | tr -dc a-zA-Z0-9 | fold -w ${PASS_LENGTH} | head -n 1
 }
 
 thirteenth_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | sha256sum)
-  local SEED1=$(uuidgen -r)
-  local SEED2=$(uuidgen -t)
-  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen ${PASS_LENGTH} 1
 }
 
 fourteenth_rand()
 {
-  local DATE1=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
-  local SEED1=$(uuidgen -t)
-  local SEED2=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --numerals ${PASS_LENGTH} 1
 }
 
 fifteenth_rand()
 {
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P" | sha256sum)
-  local SEED1=$(uuidgen -t)
-  local SEED2=$(uuidgen -r)
-  local myresult=$(echo "${DATE1}${SEED1}${SEED2}" | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --no-vowels ${PASS_LENGTH} 1
 }
 
 sixteenth_rand()
 {
-  local DATE3=$(date +"%N-%S")
-  local myresult=$(echo $DATE3 | sha384sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --ambiguous ${PASS_LENGTH} 1
 }
 
 seventeenth_rand()
 {
-  local DATE3=$(date +"%N-%S")
-  local myresult=$(echo $DATE3 | sha512sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --symbols ${PASS_LENGTH} 1
 }
 
 eighteenth_rand()
 {
-  local DATE4=$(date +"%S-%N")
-  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --no-capitalize ${PASS_LENGTH} 1
 }
 
 nineteenth_rand()
 {
-  local DATE4=$(date +"%S-%N")
-  local myresult=$(echo $DATE4 | sha256sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure --capitalize ${PASS_LENGTH} 1
 }
 
 twentieth_rand()
 {
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N" | rev)
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  local RANDODD=$(dd if=/dev/random bs=1 count=101 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
-  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+  pwgen --secure ${PASS_LENGTH} 1
 }
 
-unsafe () {
-  RESULT=$(unsafe_rand)
-}
-
-unsafe_rand()
-{
-  local DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  local DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  local RANDODD=$(dd if=/dev/urandom bs=1 count=3333 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev)
-  local SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  local myresult=$(echo $SEED1 | sha256sum | base64 | head -c ${PASS_LENGTH})
-  echo $myresult
+# openssl
+openssl_base64_rand () {
+  openssl rand -base64 ${PASS_LENGTH}
 }
 
 # These disobey the PASS_LENGTH
 disobedient() {
-  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  DATE3=$(date +"%N-%S")
-  DATE4=$(date +"%S-%N")
-  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  SEED2=$(echo $SEED1:$DATE3 | md5sum)
-  openssl rand -base64 ${PASS_LENGTH}
-  dd if=/dev/urandom bs=1 count=${PASS_LENGTH} 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev
-  # These badly to disobey the PASS_LENGTH
-  echo $SEED1 | md5sum
-  echo $SEED2 | md5sum
-  echo $DATE1 | md5sum
-  echo $DATE2 | md5sum
-  echo $DATE3 | md5sum
-  echo $DATE4 | md5sum
-  echo $SEED1 | sha1sum
-  echo $SEED2 | sha1sum
-  echo $DATE1 | sha1sum
-  echo $DATE2 | sha1sum
-  echo $DATE3 | sha1sum
-  echo $DATE4 | sha1sum
-  echo $SEED1 | sha256sum
-  echo $SEED2 | sha256sum
-  echo $DATE1 | sha256sum
-  echo $DATE2 | sha256sum
-  echo $DATE3 | sha256sum
-  echo $DATE4 | sha256sum
+  apg -a 0 -n20
 }
 longshots() {
-  DATE1=$(date +"%y-%m-%d-%H:%M:%S:%p:%N")
-  DATE2=$(date +"%N:%y-%m-%d-%H:%M:%S:%P")
-  DATE3=$(date +"%N-%S")
-  DATE4=$(date +"%S-%N")
-  SEED1=$(echo $DATE1:$DATE2:$RANDODD | sha512sum | base64 | head -c 256)
-  SEED2=$(echo $SEED1:$DATE3 | md5sum)
-  echo $SEED1 | sha384sum
-  echo $SEED2 | sha384sum
-  echo $DATE1 | sha384sum
-  echo $DATE2 | sha384sum
-  echo $DATE3 | sha384sum
-  echo $DATE4 | sha384sum
-  echo $SEED1 | sha512sum
-  echo $SEED2 | sha512sum
-  echo $DATE1 | sha512sum
-  echo $DATE2 | sha512sum
-  echo $DATE3 | sha512sum
+  if [[ ${COLUMNS:-$(tput cols)} < 250 ]]; then
+    apg -a 1 -n20 -m ${COLUMNS:-$(tput cols)}  -x ${COLUMNS:-$(tput cols)}
+  else
+    apg -a 1 -n20 -m 249 -x 249
+  fi
+  apg -n10 -x 50
+  apg -n10 -l -x 10
+  apg -n10 -y -x 25
+  apg -n10 -t -x 25
 }
+
 tests() {
-  shuffy
-  echo $RESULT | ent
+  echo first_rand 
+  first_rand
+  horizontal_rule
+  echo second_rand 
+  second_rand
+  horizontal_rule
+  echo third_rand 
+  third_rand
+  horizontal_rule
+  echo fourth_rand 
+  fourth_rand
+  horizontal_rule
+  echo fifth_rand 
+  fifth_rand
+  horizontal_rule
+  echo sixth_rand 
+  sixth_rand
+  horizontal_rule
+  echo seventh_rand 
+  seventh_rand
+  horizontal_rule
+  echo eighth_rand 
+  eighth_rand
+  horizontal_rule
+  echo nineth_rand 
+  nineth_rand
+  horizontal_rule
+  echo tenth_rand 
+  tenth_rand
+  horizontal_rule
+  echo eleventh_rand 
+  eleventh_rand
+  horizontal_rule
+  echo twelfth_rand 
+  twelfth_rand
+  horizontal_rule
+  echo thirteenth_rand 
+  thirteenth_rand
+  horizontal_rule
+  echo fourteenth_rand 
+  fourteenth_rand
+  horizontal_rule
+  echo fifteenth_rand 
+  fifteenth_rand
+  horizontal_rule
+  echo sixteenth_rand 
+  sixteenth_rand
+  horizontal_rule
+  echo seventeenth_rand 
+  seventeenth_rand
+  horizontal_rule
+  echo eighteenth_rand 
+  eighteenth_rand
+  horizontal_rule
+  echo nineteenth_rand 
+  nineteenth_rand
+  horizontal_rule
+  echo twentieth_rand 
+  twentieth_rand
 }
 
 main "$@"
