@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Generate a password and immediately copy it to all clipboards by default
 
 
