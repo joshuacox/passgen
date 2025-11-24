@@ -1,0 +1,61 @@
+.SH NAME
+passgen \- command‑line password generator with clipboard integration
+.SH SYNOPSIS
+.B passgen
+.RI [ options ] " [length]"
+.SH DESCRIPTION
+\fBpassgen\fR generates random passwords using a variety of algorithms and copies the result to the X clipboard (primary, secondary and clipboard selections).  By default it creates a password of 11 characters using a secure random source.  The length can be overridden by providing a numeric argument or by using the \fB\-\-unsafe\fR option.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Show a short usage summary and exit.
+.TP
+.B \-l, \-\-long
+Generate a set of long hash‑style passwords (see the \fBlongshots\fR function in the script).
+.TP
+.B \-a, \-\-all, \-v
+Generate all password types: obedient, disobedient and long passwords.
+.TP
+.B \-o, \-\-obedient
+Generate an “obedient” password using \fBapg\fR that respects the requested length.
+.TP
+.B \-t, \-\-test
+Run a self‑test that exercises each password‑generation routine and prints the results.
+.TP
+.B \-u, \-\-unsafe \fIlength\fR
+Generate a password of the specified \fIlength\fR using the “unsafe” method (bypasses the default length validation).  If \fIlength\fR is omitted, the default length of 11 is used.
+.TP
+.B length
+A numeric argument (without any option flag) that sets the password length for the default generation method.
+.SH EXAMPLES
+Generate an 12‑character password and copy it to the clipboard:
+.PP
+.nf
+$ passgen 12
+.fi
+.PP
+Generate an obedient password of the default length:
+.PP
+.nf
+$ passgen \-\-obedient
+.fi
+.PP
+Generate all password types:
+.PP
+.nf
+$ passgen \-\-all
+.fi
+.PP
+Run the built‑in test suite:
+.PP
+.nf
+$ passgen \-\-test
+.fi
+.SH AUTHOR
+Written by the original author of the \fBpassgen\fR script.
+.SH SEE ALSO
+.BR apg (1),
+.BR pwgen (1),
+.BR xclip (1),
+.BR gpg (1),
+.BR openssl (1)
