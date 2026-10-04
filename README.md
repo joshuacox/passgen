@@ -6,21 +6,33 @@ http://joshuacox.github.io/passgen
 
 ### Usage
 
+`passgen` uses cryptographically secure random sources to generate strong passwords, passphrases, or tokens and automatically copies them to your clipboard (supporting Wayland, X11, and macOS). In headless/SSH environments, it gracefully prints directly to standard output without crashing.
 
-`passgen` use a pretty good random generator to make a randomized password and copy to it your clipboard, primary and
-secondary.
+```bash
+# Generate default 16-character password and copy to clipboard
+passgen
 
-i.e. ctrl-shift-v, shift-insert, and middle click all ought to
-work in linux and paste you out a decent password.  Or if you like you
-can copy any section of the resulting out of `passgen -v`
+# Generate custom length password (e.g. 24 chars)
+passgen 24
 
-`passgen -v`  will get you a bunch of random output on the terminal
+# Generate a 5-word Diceware passphrase (e.g. pebble-sailor-canyon-forest-dragon)
+passgen -w 5
 
-`passgen 8`  will get you a random password of length 8 and copy to the
-clipboards
+# Generate a 6-digit numeric PIN
+passgen -p 6
 
-`passgen 32`  will get you a random password of length 32 and copy to the
-clipboards
+# Generate multiple passwords without copying to clipboard
+passgen -c 5 -n
+
+# Copy over SSH using OSC 52 terminal escape sequence
+passgen --osc52
+
+# Auto-clear clipboard after 45 seconds for extra security
+passgen --clear 45
+
+# View all options and help
+passgen -h
+```
 
 ### Install
 

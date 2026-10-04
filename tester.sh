@@ -11,13 +11,19 @@ export ChiSquare=$ChiSquare
 export Mean=$Mean
 export MonteCarloPi=$MonteCarloPi
 
-SerialCorrelation"
- if ! [[ $(echo "$Entropy > $THRESH" | bc) -gt "0" ]] ; then
-   echo -n "Entropy too low at"
-   echo $Entropy
-   exit 1
- else
-    echo Entropy is high enough at $Entropy
+  export SerialCorrelation=$SerialCorrelation
+  
+  if command -v bc >/dev/null 2>&1; then
+    is_high=$(echo "$Entropy > $THRESH" | bc 2>/dev/null)
+  else
+    is_high=$(awk -v e="$Entropy" -v t="$THRESH" 'BEGIN {print (e > t) ? 1 : 0}')
+  fi
+
+  if [[ "$is_high" -ne 1 ]]; then
+    echo "Entropy too low at $Entropy (threshold: $THRESH)"
+    exit 1
+  else
+    echo "Entropy is high enough at $Entropy (threshold: $THRESH)"
     exit 0
- fi
-done < $TEST_FILE
+  fi
+done < "$TEST_FILE"

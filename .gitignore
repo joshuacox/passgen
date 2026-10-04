@@ -1,1 +1,8 @@
 .aider*
+node_modules/
+.next/
+out/
+site/node_modules/
+site/.next/
+site/out/
+

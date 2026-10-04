@@ -1,6 +1,10 @@
 #!/bin/bash
 THRESH=4
-TMP=$(mktemp --tmpdir=/assets -d --suffix=testpassgen)
+if [ -d "/assets" ]; then
+  TMP=$(mktemp --tmpdir=/assets -d --suffix=testpassgen)
+else
+  TMP=$(mktemp -d -t testpassgen.XXXXXX)
+fi
 
 ./passgen -v > $TMP/testgen
 #cat $TMP/testgen

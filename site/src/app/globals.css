@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-black;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+code, pre, kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}

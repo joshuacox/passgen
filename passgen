@@ -1,413 +1,488 @@
 #!/usr/bin/env bash
-# Generate a password and immediately copy it to all clipboards by default
+# Generate secure passwords, passphrases, and tokens with flexible clipboard and terminal integration.
 
+set -o pipefail 2>/dev/null || true
 
-which xclip &> /dev/null
-if [ ! $? -eq 0 ]; then
-  XCLIP_FOUND=0
-else
-  XCLIP_FOUND=1
-fi
-which wl-copy &> /dev/null
-if [ ! $? -eq 0 ]; then
-  WLCOPY_FOUND=0
-else
-  WLCOPY_FOUND=1
-fi
+# Global configuration defaults
+PASS_LENGTH=16
+COUNT=1
+MODE="shuffy"
+NO_CLIP=0
+CLEAR_SECONDS=0
+USE_OSC52=0
+RESULT=""
 
-if [[ ${WLCOPY_FOUND} -eq 0 && ${XCLIP_FOUND} -eq 0 ]]; then
-  echo 'no copy utility found'
-  exit 1
-fi
-
-if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
-  if [[ ${WLCOPY_FOUND} -eq 0 ]]; then
-    echo 'wl-copy utility not found'
-    exit 1
-  fi
-  COPY_CMD=wl-copy
-elif [ "$XDG_SESSION_TYPE" = "x11" ]; then
-  if [[ ${XCLIP_FOUND} -eq 0 ]]; then
-    echo 'xclip utility not found'
-    exit 1
-  fi
-  COPY_CMD="xclip -i -selection clipboard"
-else
-  echo "Unknown or headless session (Type: $XDG_SESSION_TYPE)"
-  exit 1
-fi
-
-
-# Define what it means to be a long pass
-LONG=63
-
-# Our result store
-RESULT=initialized
-
-# regex to test if integer
-re='^[0-9]+$'
-if [[ $1 =~ $re ]] ; then
-  PASS_LENGTH=$1
-else
-  PASS_LENGTH=11
-fi
-
-# Check if a command exists
-check_cmd () {
-  if ! type "$1" > /dev/null; then
-    echo "$1 was not found in your path!"
-    echo "To proceed please install $1 to your path and try again!"
-    exit 1
+# Determine clipboard backends
+detect_clipboard() {
+  CLIP_BACKEND="none"
+  if [[ "$XDG_SESSION_TYPE" == "wayland" ]] && command -v wl-copy >/dev/null 2>&1; then
+    CLIP_BACKEND="wayland"
+  elif [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-copy >/dev/null 2>&1; then
+    CLIP_BACKEND="wayland"
+  elif [[ -n "$DISPLAY" ]] && command -v xclip >/dev/null 2>&1; then
+    CLIP_BACKEND="xclip"
+  elif [[ -n "$DISPLAY" ]] && command -v xsel >/dev/null 2>&1; then
+    CLIP_BACKEND="xsel"
+  elif command -v pbcopy >/dev/null 2>&1; then
+    CLIP_BACKEND="pbcopy"
   fi
 }
 
-horizontal_rule () {
-  #rulez=( '!' '@' '\#' '-' '>' '<' '.' '_' '^' '*' '%' )
-  rulez=( '-' )
-  selected_rule=${rulez[$RANDOM % ${#rulez[@]} ]}
-  if [[ -z $selected_rule ]]; then
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' "_"
+copy_to_clipboard() {
+  local text="$1"
+  if [[ "$NO_CLIP" -eq 1 ]]; then
+    return 0
+  fi
+
+  if [[ "$USE_OSC52" -eq 1 ]]; then
+    local b64
+    b64=$(printf "%s" "$text" | base64 | tr -d '\r\n')
+    # OSC 52 sequence to clipboard
+    printf "\033]52;c;%s\007" "$b64" > /dev/tty 2>/dev/null || true
+  fi
+
+  case "$CLIP_BACKEND" in
+    wayland)
+      printf "%s" "$text" | wl-copy --primary >/dev/null 2>&1 || true
+      printf "%s" "$text" | wl-copy >/dev/null 2>&1 || true
+      ;;
+    xclip)
+      printf "%s" "$text" | xclip -i -selection clipboard >/dev/null 2>&1 || true
+      printf "%s" "$text" | xclip -i -selection primary >/dev/null 2>&1 || true
+      printf "%s" "$text" | xclip -i -selection secondary >/dev/null 2>&1 || true
+      ;;
+    xsel)
+      printf "%s" "$text" | xsel -b -i >/dev/null 2>&1 || true
+      printf "%s" "$text" | xsel -p -i >/dev/null 2>&1 || true
+      ;;
+    pbcopy)
+      printf "%s" "$text" | pbcopy >/dev/null 2>&1 || true
+      ;;
+    none)
+      # In headless or environments without tools, do nothing silently
+      ;;
+  esac
+
+  if [[ "$CLEAR_SECONDS" -gt 0 && "$CLIP_BACKEND" != "none" ]]; then
+    schedule_clipboard_clear "$CLEAR_SECONDS"
+  fi
+}
+
+schedule_clipboard_clear() {
+  local delay="$1"
+  (
+    sleep "$delay"
+    case "$CLIP_BACKEND" in
+      wayland)
+        wl-copy --clear >/dev/null 2>&1 || wl-copy "" >/dev/null 2>&1
+        ;;
+      xclip)
+        printf "" | xclip -i -selection clipboard >/dev/null 2>&1 || true
+        printf "" | xclip -i -selection primary >/dev/null 2>&1 || true
+        ;;
+      xsel)
+        xsel -c -b >/dev/null 2>&1 || true
+        ;;
+      pbcopy)
+        printf "" | pbcopy >/dev/null 2>&1 || true
+        ;;
+    esac
+  ) >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+}
+
+horizontal_rule() {
+  local cols="${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}"
+  printf '%*s\n' "$cols" '' | tr ' ' "-"
+}
+
+# --- Password & Token Generators ---
+
+gen_urandom_alnum() {
+  local len="${1:-$PASS_LENGTH}"
+  LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c "$len"
+  echo
+}
+
+gen_urandom_all_printable() {
+  local len="${1:-$PASS_LENGTH}"
+  LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+-=[]{}|;:,.<>?' < /dev/urandom | head -c "$len"
+  echo
+}
+
+gen_urandom_safe_symbols() {
+  local len="${1:-$PASS_LENGTH}"
+  LC_ALL=C tr -dc 'a-zA-Z0-9!@#$%*+=-_' < /dev/urandom | head -c "$len"
+  echo
+}
+
+gen_openssl_base64() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 "$(( len * 2 ))" 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c "$len"
+    echo
   else
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' "$selected_rule"
+    gen_urandom_alnum "$len"
   fi
 }
 
-# Main
-main() {
-  local FIRST_ARG=$1
-  check_cmd uuidgen
-  check_cmd date
-  check_cmd sha256sum
-  check_cmd sha384sum
-  check_cmd sha512sum
-  check_cmd md5sum
-  check_cmd shuf
-  check_cmd gpg
-  check_cmd pwgen
-  check_cmd openssl
-
-  if [[ "$FIRST_ARG" == '-h' || "$FIRST_ARG" == '--help'  ]]; then
-    usage
-    exit 1
-  elif [[ "$FIRST_ARG" == '-l' || "$FIRST_ARG" == '--long'  ]]; then
-    longshots
-    exit 1
-  elif [[ "$FIRST_ARG" == '-a' || "$FIRST_ARG" == '--all' || "$FIRST_ARG" == '-v'  ]]; then
-    obedient
-    disobedient
-    longshots
-    exit 1
-  elif [[ "$FIRST_ARG" == '-o' || "$FIRST_ARG" == '--obedient'  ]]; then
-    obedient
-    exit 1
-  elif [[ "$FIRST_ARG" == '-t' || "$FIRST_ARG" == '--test'  ]]; then
-    tests
-    exit 1
-  fi
-  
-  if [[ "$FIRST_ARG" == '-u' || "$FIRST_ARG" == '--unsafe'  ]]; then
-    if [[ $2 =~ $re ]] ; then
-      PASS_LENGTH=$2
-    else
-      PASS_LENGTH=11
-    fi
-    unsafe
+gen_openssl_hex() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex "$(( (len + 1) / 2 ))" 2>/dev/null | head -c "$len"
+    echo
   else
-    shuffy
+    LC_ALL=C tr -dc '0-9a-f' < /dev/urandom | head -c "$len"
+    echo
+  fi
+}
+
+gen_gpg_rand() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v gpg >/dev/null 2>&1; then
+    gpg --gen-random 1 "$(( len * 4 + 64 ))" 2>/dev/null | base64 | tr -dc 'a-zA-Z0-9_.-' | head -c "$len"
+    echo
+  else
+    gen_urandom_safe_symbols "$len"
+  fi
+}
+
+gen_pwgen_secure() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v pwgen >/dev/null 2>&1; then
+    pwgen --secure "$len" 1
+  else
+    gen_urandom_all_printable "$len"
+  fi
+}
+
+gen_pwgen_symbols() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v pwgen >/dev/null 2>&1; then
+    pwgen --secure --symbols "$len" 1
+  else
+    gen_urandom_safe_symbols "$len"
+  fi
+}
+
+gen_pwgen_no_vowels() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v pwgen >/dev/null 2>&1; then
+    pwgen --secure --no-vowels "$len" 1
+  else
+    LC_ALL=C tr -dc 'bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ0-9' < /dev/urandom | head -c "$len"
+    echo
+  fi
+}
+
+gen_apg_pronounced() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v apg >/dev/null 2>&1; then
+    apg -a 0 -n1 -m "$len" -x "$len" 2>/dev/null || gen_urandom_alnum "$len"
+  else
+    gen_urandom_alnum "$len"
+  fi
+}
+
+gen_apg_random() {
+  local len="${1:-$PASS_LENGTH}"
+  if command -v apg >/dev/null 2>&1; then
+    apg -a 1 -n1 -m "$len" -x "$len" 2>/dev/null || gen_urandom_all_printable "$len"
+  else
+    gen_urandom_all_printable "$len"
+  fi
+}
+
+gen_pin() {
+  local len="${1:-$PASS_LENGTH}"
+  LC_ALL=C tr -dc '0-9' < /dev/urandom | head -c "$len"
+  echo
+}
+
+gen_passphrase() {
+  local word_count="${1:-4}"
+  local wordlist=()
+  if [[ -f "/usr/share/dict/words" ]]; then
+    # Filter 4 to 8 char common alphabetic words
+    mapfile -t wordlist < <(grep -E '^[a-z]{4,8}$' /usr/share/dict/words 2>/dev/null | shuf -n "$word_count" 2>/dev/null)
   fi
 
-  clippy
+  if [[ ${#wordlist[@]} -lt "$word_count" ]]; then
+    local fallback_words=(
+      "apple" "banana" "orange" "river" "mountain" "cloud" "forest" "silver"
+      "golden" "ember" "falcon" "winter" "summer" "castle" "shield" "dragon"
+      "harbor" "whisper" "timber" "shadow" "beacon" "zenith" "vortex" "planet"
+      "galaxy" "canyon" "desert" "valley" "meadow" "island" "pebble" "stream"
+      "anchor" "bridge" "compass" "feather" "hammer" "lantern" "mirror" "sailor"
+    )
+    wordlist=()
+    local total=${#fallback_words[@]}
+    for (( i=0; i<word_count; i++ )); do
+      local idx=$(( RANDOM % total ))
+      wordlist+=( "${fallback_words[$idx]}" )
+    done
+  fi
+
+  local joined
+  printf -v joined "%s-" "${wordlist[@]}"
+  echo "${joined%-}"
 }
 
-# Help
-usage() {
-  echo -e "Passgen - The CLI Password Generator"
-  echo "Usage:"
-  echo -e "passgen\t\t-      by default will generate a password with lots of chars
- use a pretty good random and copy to your clipboard, primary and
-secondary.i.e. ctrl-shift-v, shift-insert, and middle click all ought to
-work in linux and print you out a decent password."
-  echo -e "passgen -o\t- generate obedient passwords"
-  echo -e "passgen -a\t- generate all passwords"
-  echo -e "passgen -l\t- generate long hash passwords"
-  echo -e "passgen 12\t- generate 12 character passwords"
+# Unsafe: unconstrained binary-to-graph character stream
+unsafe() {
+  local len="${1:-$PASS_LENGTH}"
+  LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c "$len"
+  echo
 }
 
-# Main block of random generators these all obey PASS_LENGTH
 obedient() {
-  apg -a 1 -n20 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
-}
-
-clippy () {
-  if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
-    if [[ ${WLCOPY_FOUND} -eq 1 ]]; then
-      echo -n $RESULT | wl-copy --primary
-      echo -n $RESULT | wl-copy
-    fi
-  elif [ "$XDG_SESSION_TYPE" = "x11" ]; then
-    if [[ ${XCLIP_FOUND} -eq 1 ]]; then
-      echo -n $RESULT | xclip -i  -selection clipboard
-      echo -n $RESULT | xclip -i  -selection primary
-      echo -n $RESULT | xclip -i  -selection secondary
-    fi
+  if command -v apg >/dev/null 2>&1; then
+    apg -a 1 -n20 -m "$PASS_LENGTH" -x "$PASS_LENGTH"
   else
-    echo "Unknown or headless session (Type: $XDG_SESSION_TYPE)"
-    exit 1
+    for ((i=0; i<20; i++)); do
+      gen_urandom_all_printable "$PASS_LENGTH"
+    done
   fi
-  echo $RESULT
 }
 
-shuffy () {
-  # Determine which method of creating a random password we'll use
-  SHUFFY=$(shuf -i 1-21 -n1 --random-source=/dev/random)
-  case "$SHUFFY" in
-  "1")
-      RESULT=$(first_rand)
-      ;;
-  "2")
-      RESULT=$(second_rand)
-      ;;
-  "3")
-      RESULT=$(third_rand)
-      ;;
-  "4")
-      RESULT=$(fourth_rand)
-      ;;
-  "5")
-      RESULT=$(fifth_rand)
-      ;;
-  "6")
-      RESULT=$(sixth_rand)
-      ;;
-  "7")
-      RESULT=$(seventh_rand)
-      ;;
-  "8")
-      RESULT=$(eighth_rand)
-      ;;
-  "9")
-      RESULT=$(nineth_rand)
-      ;;
-  "10")
-      RESULT=$(tenth_rand)
-      ;;
-  "11")
-      RESULT=$(eleventh_rand)
-      ;;
-  "12")
-      RESULT=$(twelfth_rand)
-      ;;
-  "13")
-      RESULT=$(thirteenth_rand)
-      ;;
-  "14")
-      RESULT=$(fourteenth_rand)
-      ;;
-  "15")
-      RESULT=$(fifteenth_rand)
-      ;;
-  "16")
-      RESULT=$(sixteenth_rand)
-      ;;
-  "17")
-      RESULT=$(seventeenth_rand)
-      ;;
-  "18")
-      RESULT=$(eighteenth_rand)
-      ;;
-  "19")
-      RESULT=$(nineteenth_rand)
-      ;;
-  *)
-      RESULT=$(twentieth_rand)
-      ;;
+disobedient() {
+  if command -v apg >/dev/null 2>&1; then
+    apg -a 0 -n20
+  else
+    for ((i=0; i<20; i++)); do
+      gen_urandom_alnum 12
+    done
+  fi
+}
+
+longshots() {
+  local cols="${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}"
+  local m_cols=$(( cols < 250 ? cols : 249 ))
+  if command -v apg >/dev/null 2>&1; then
+    apg -a 1 -n20 -m "$m_cols" -x "$m_cols"
+    apg -n10 -x 50
+    apg -n10 -l -x 10
+    apg -n10 -y -x 25
+    apg -n10 -t -x 25
+  else
+    for ((i=0; i<20; i++)); do
+      gen_urandom_all_printable "$m_cols"
+    done
+  fi
+}
+
+# shuffy pool selector
+shuffy() {
+  local choice
+  choice=$(( RANDOM % 10 + 1 ))
+  case "$choice" in
+    1) RESULT=$(gen_urandom_alnum "$PASS_LENGTH") ;;
+    2) RESULT=$(gen_urandom_all_printable "$PASS_LENGTH") ;;
+    3) RESULT=$(gen_urandom_safe_symbols "$PASS_LENGTH") ;;
+    4) RESULT=$(gen_openssl_base64 "$PASS_LENGTH") ;;
+    5) RESULT=$(gen_openssl_hex "$PASS_LENGTH") ;;
+    6) RESULT=$(gen_gpg_rand "$PASS_LENGTH") ;;
+    7) RESULT=$(gen_pwgen_secure "$PASS_LENGTH") ;;
+    8) RESULT=$(gen_pwgen_symbols "$PASS_LENGTH") ;;
+    9) RESULT=$(gen_apg_pronounced "$PASS_LENGTH") ;;
+    *) RESULT=$(gen_apg_random "$PASS_LENGTH") ;;
   esac
 }
 
-first_rand()
-{
-  cat /dev/urandom | tr -dc a-zA-Z0-9 | head -c${PASS_LENGTH}; echo
-}
-
-second_rand()
-{
-  apg -a 0 -n1 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
-}
-
-third_rand()
-{
-  apg -a 1 -n1 -m ${PASS_LENGTH}  -x ${PASS_LENGTH}
-
-}
-
-fourth_rand()
-{
-  local HEADSTOP=$(( 400 + $RANDOM % 50 + 1 ))
-  local GENBLOCK=$(( 500 + $RANDOM % 50 + 1 ))
-  echo $(gpg --gen-random 1 ${GENBLOCK}|base64|head -c${HEADSTOP}|tail -c${PASS_LENGTH})
-}
-
-fifth_rand()
-{
-  pwgen --secure ${PASS_LENGTH} 1
-}
-
-sixth_rand()
-{
-  pwgen --secure ${PASS_LENGTH} 1
-}
-
-seventh_rand()
-{
-  echo $(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${PASS_LENGTH})
-}
-
-eighth_rand()
-{
-  echo $(< /dev/random tr -dc _A-Z-a-z-0-9 | head -c${1:-${PASS_LENGTH}})
-}
-
-nineth_rand()
-{
-  echo $(< /dev/random tr -dc '12345!@#$%qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM' | head -c${PASS_LENGTH})
-}
-
-tenth_rand()
-{
-  echo $(strings /dev/random | grep -o '[[:alnum:]]' | head -n ${PASS_LENGTH} | tr -d '\n')
-}
-
-eleventh_rand()
-{
-  echo $(tr -cd '[:alnum:]' < /dev/urandom | fold -w${PASS_LENGTH} | head -n1)
-}
-
-twelfth_rand()
-{
-  cat /dev/urandom | tr -dc a-zA-Z0-9 | fold -w ${PASS_LENGTH} | head -n 1
-}
-
-thirteenth_rand()
-{
-  pwgen ${PASS_LENGTH} 1
-}
-
-fourteenth_rand()
-{
-  pwgen --secure --numerals ${PASS_LENGTH} 1
-}
-
-fifteenth_rand()
-{
-  pwgen --secure --no-vowels ${PASS_LENGTH} 1
-}
-
-sixteenth_rand()
-{
-  pwgen --secure --ambiguous ${PASS_LENGTH} 1
-}
-
-seventeenth_rand()
-{
-  pwgen --secure --symbols ${PASS_LENGTH} 1
-}
-
-eighteenth_rand()
-{
-  pwgen --secure --no-capitalize ${PASS_LENGTH} 1
-}
-
-nineteenth_rand()
-{
-  pwgen --secure --capitalize ${PASS_LENGTH} 1
-}
-
-twentieth_rand()
-{
-  pwgen --secure ${PASS_LENGTH} 1
-}
-
-# openssl
-openssl_base64_rand () {
-  openssl rand -base64 ${PASS_LENGTH}
-}
-
-# These disobey the PASS_LENGTH
-disobedient() {
-  apg -a 0 -n20
-}
-longshots() {
-  if [[ ${COLUMNS:-$(tput cols)} < 250 ]]; then
-    apg -a 1 -n20 -m ${COLUMNS:-$(tput cols)}  -x ${COLUMNS:-$(tput cols)}
-  else
-    apg -a 1 -n20 -m 249 -x 249
-  fi
-  apg -n10 -x 50
-  apg -n10 -l -x 10
-  apg -n10 -y -x 25
-  apg -n10 -t -x 25
-}
-
+# Self tests
 tests() {
-  echo first_rand 
-  first_rand
+  local funcs=(
+    gen_urandom_alnum
+    gen_urandom_all_printable
+    gen_urandom_safe_symbols
+    gen_openssl_base64
+    gen_openssl_hex
+    gen_gpg_rand
+    gen_pwgen_secure
+    gen_pwgen_symbols
+    gen_pwgen_no_vowels
+    gen_apg_pronounced
+    gen_apg_random
+    gen_pin
+    unsafe
+  )
+  for fn in "${funcs[@]}"; do
+    echo "=== $fn ==="
+    "$fn" "$PASS_LENGTH"
+    horizontal_rule
+  done
+  echo "=== gen_passphrase (4 words) ==="
+  gen_passphrase 4
   horizontal_rule
-  echo second_rand 
-  second_rand
-  horizontal_rule
-  echo third_rand 
-  third_rand
-  horizontal_rule
-  echo fourth_rand 
-  fourth_rand
-  horizontal_rule
-  echo fifth_rand 
-  fifth_rand
-  horizontal_rule
-  echo sixth_rand 
-  sixth_rand
-  horizontal_rule
-  echo seventh_rand 
-  seventh_rand
-  horizontal_rule
-  echo eighth_rand 
-  eighth_rand
-  horizontal_rule
-  echo nineth_rand 
-  nineth_rand
-  horizontal_rule
-  echo tenth_rand 
-  tenth_rand
-  horizontal_rule
-  echo eleventh_rand 
-  eleventh_rand
-  horizontal_rule
-  echo twelfth_rand 
-  twelfth_rand
-  horizontal_rule
-  echo thirteenth_rand 
-  thirteenth_rand
-  horizontal_rule
-  echo fourteenth_rand 
-  fourteenth_rand
-  horizontal_rule
-  echo fifteenth_rand 
-  fifteenth_rand
-  horizontal_rule
-  echo sixteenth_rand 
-  sixteenth_rand
-  horizontal_rule
-  echo seventeenth_rand 
-  seventeenth_rand
-  horizontal_rule
-  echo eighteenth_rand 
-  eighteenth_rand
-  horizontal_rule
-  echo nineteenth_rand 
-  nineteenth_rand
-  horizontal_rule
-  echo twentieth_rand 
-  twentieth_rand
+}
+
+usage() {
+  cat <<'EOF'
+Passgen - The CLI Password Generator
+
+Usage:
+  passgen [OPTIONS] [LENGTH]
+
+Options:
+  -l, --length <N>     Set password length (default: 16)
+  -c, --count <N>      Generate N passwords (default: 1)
+  -w, --words <N>      Generate a multi-word passphrase with N words (default: 4)
+  -p, --pin <N>        Generate numeric PIN of length N
+  -o, --obedient       Generate obedient passwords matching exact length
+  -u, --unsafe         Generate password using unfiltered graph characters
+  -a, --all, -v        Generate comprehensive suite of random passwords
+  -l, --long           Generate long hash passwords
+  -n, --no-clip        Do not copy to clipboard (print to stdout only)
+  --osc52              Emit OSC 52 terminal clipboard sequence (works over SSH)
+  --clear <SEC>        Auto-clear clipboard after SEC seconds
+  -t, --test           Run generator test suite
+  -h, --help           Show this help message
+
+Examples:
+  passgen              Generate 16-char secure password and copy to clipboard
+  passgen 24           Generate 24-char secure password
+  passgen -w 5         Generate 5-word Diceware passphrase
+  passgen -c 5 -n      Generate 5 passwords without copying
+  passgen -o 20        Generate 20 length-obedient passwords
+EOF
+}
+
+main() {
+  detect_clipboard
+
+  local WORD_COUNT=4
+  local re='^[0-9]+$'
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      -n|--no-clip)
+        NO_CLIP=1
+        shift
+        ;;
+      --osc52)
+        USE_OSC52=1
+        shift
+        ;;
+      --clear)
+        CLEAR_SECONDS="$2"
+        shift 2
+        ;;
+      -c|--count)
+        COUNT="$2"
+        shift 2
+        ;;
+      -l|--length)
+        PASS_LENGTH="$2"
+        shift 2
+        ;;
+      -w|--words)
+        MODE="passphrase"
+        if [[ -n "$2" && "$2" =~ $re ]]; then
+          WORD_COUNT="$2"
+          shift 2
+        else
+          shift
+        fi
+        ;;
+      -p|--pin)
+        MODE="pin"
+        if [[ -n "$2" && "$2" =~ $re ]]; then
+          PASS_LENGTH="$2"
+          shift 2
+        else
+          shift
+        fi
+        ;;
+      -o|--obedient)
+        MODE="obedient"
+        shift
+        ;;
+      -u|--unsafe)
+        MODE="unsafe"
+        shift
+        ;;
+      -a|--all|-v)
+        MODE="all"
+        shift
+        ;;
+      --long)
+        MODE="long"
+        shift
+        ;;
+      -t|--test)
+        MODE="test"
+        shift
+        ;;
+      *)
+        if [[ "$1" =~ $re ]]; then
+          PASS_LENGTH="$1"
+        else
+          echo "Unknown option: $1" >&2
+          usage >&2
+          exit 1
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  case "$MODE" in
+    all)
+      obedient
+      disobedient
+      longshots
+      exit 0
+      ;;
+    long)
+      longshots
+      exit 0
+      ;;
+    obedient)
+      obedient
+      exit 0
+      ;;
+    test)
+      tests
+      exit 0
+      ;;
+    passphrase)
+      local last=""
+      for ((i=0; i<COUNT; i++)); do
+        last=$(gen_passphrase "$WORD_COUNT")
+        echo "$last"
+      done
+      copy_to_clipboard "$last"
+      ;;
+    pin)
+      local last=""
+      for ((i=0; i<COUNT; i++)); do
+        last=$(gen_pin "$PASS_LENGTH")
+        echo "$last"
+      done
+      copy_to_clipboard "$last"
+      ;;
+    unsafe)
+      local last=""
+      for ((i=0; i<COUNT; i++)); do
+        last=$(unsafe "$PASS_LENGTH")
+        echo "$last"
+      done
+      copy_to_clipboard "$last"
+      ;;
+    shuffy)
+      local last=""
+      for ((i=0; i<COUNT; i++)); do
+        shuffy
+        echo "$RESULT"
+        last="$RESULT"
+      done
+      copy_to_clipboard "$last"
+      ;;
+  esac
 }
 
 main "$@"
