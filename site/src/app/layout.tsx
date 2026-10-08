@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { RegisterSW } from "../components/RegisterSW";
+
 export default function RootLayout({
   children,
 }: {
@@ -46,6 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+        <RegisterSW />
         {children}
       </body>
     </html>

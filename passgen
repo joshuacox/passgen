@@ -8,6 +8,7 @@ PASS_LENGTH=16
 COUNT=1
 MODE="shuffy"
 NO_CLIP=0
+ANALYZE=0
 CLEAR_SECONDS=0
 USE_OSC52=0
 RESULT=""
@@ -329,6 +330,7 @@ Options:
   -a, --all, -v        Generate comprehensive suite of random passwords
   -l, --long           Generate long hash passwords
   -n, --no-clip        Do not copy to clipboard (print to stdout only)
+  -e, --analyze        Calculate entropy of the generated password (requires ent)
   --osc52              Emit OSC 52 terminal clipboard sequence (works over SSH)
   --clear <SEC>        Auto-clear clipboard after SEC seconds
   -t, --test           Run generator test suite
@@ -357,6 +359,10 @@ main() {
         ;;
       -n|--no-clip)
         NO_CLIP=1
+        shift
+        ;;
+      -e|--analyze)
+        ANALYZE=1
         shift
         ;;
       --osc52)
@@ -452,6 +458,13 @@ main() {
         echo "$last"
       done
       copy_to_clipboard "$last"
+      if [[ "$ANALYZE" -eq 1 ]]; then
+        if command -v ent >/dev/null 2>&1; then
+          printf "%s" "$last" | ent
+        else
+          echo "Error: 'ent' command is required for analysis." >&2
+        fi
+      fi
       ;;
     pin)
       local last=""
@@ -460,6 +473,13 @@ main() {
         echo "$last"
       done
       copy_to_clipboard "$last"
+      if [[ "$ANALYZE" -eq 1 ]]; then
+        if command -v ent >/dev/null 2>&1; then
+          printf "%s" "$last" | ent
+        else
+          echo "Error: 'ent' command is required for analysis." >&2
+        fi
+      fi
       ;;
     unsafe)
       local last=""
@@ -468,6 +488,13 @@ main() {
         echo "$last"
       done
       copy_to_clipboard "$last"
+      if [[ "$ANALYZE" -eq 1 ]]; then
+        if command -v ent >/dev/null 2>&1; then
+          printf "%s" "$last" | ent
+        else
+          echo "Error: 'ent' command is required for analysis." >&2
+        fi
+      fi
       ;;
     shuffy)
       local last=""
@@ -477,6 +504,13 @@ main() {
         last="$RESULT"
       done
       copy_to_clipboard "$last"
+      if [[ "$ANALYZE" -eq 1 ]]; then
+        if command -v ent >/dev/null 2>&1; then
+          printf "%s" "$last" | ent
+        else
+          echo "Error: 'ent' command is required for analysis." >&2
+        fi
+      fi
       ;;
   esac
 }

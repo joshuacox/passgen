@@ -1,0 +1,31 @@
+name: Test CLI
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'passgen'
+      - 'tester.sh'
+      - '.github/workflows/test-cli.yml'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'passgen'
+      - 'tester.sh'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck apg pwgen ent bc
+
+      - name: Run ShellCheck
+        run: shellcheck passgen tester.sh || true
+
+      - name: Run Entropy Tests
+        run: ./tester.sh
